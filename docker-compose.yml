@@ -1,0 +1,41 @@
+# n8n 2.x + Python no Code node: task runners externos (documentação oficial).
+# Versões fixas: alinhar n8n e runners na MESMA tag.
+# Dados e workflows: volume ./n8n_data -> /home/node/.n8n (compatível com instalações anteriores).
+#
+# Permissões: o processo corre como UID 1000 (node). Se ./n8n_data for root (ex.: criada pelo Docker),
+# aparece EACCES em /home/node/.n8n/config e o contentor reinicia em ciclo → localhost:5678 recusa ligação.
+# Corrigir (uma vez): docker run --rm -v "$(pwd)/n8n_data:/data" alpine:3.20 chown -R 1000:1000 /data
+
+services:
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:2.13.2
+    container_name: n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_SECURE_COOKIE=false
+      - N8N_USER_MANAGEMENT_DISABLED=true
+      - NODE_FUNCTION_ALLOW_EXTERNAL=better-sqlite3
+      - NODE_PATH=/home/node/node_modules
+      # Task runners (JS + Python no Code node)
+      - N8N_RUNNERS_ENABLED=true
+      - N8N_RUNNERS_MODE=external
+      - N8N_RUNNERS_BROKER_LISTEN_ADDRESS=0.0.0.0
+      - N8N_RUNNERS_AUTH_TOKEN=${N8N_RUNNERS_AUTH_TOKEN:?Crie um ficheiro .env com N8N_RUNNERS_AUTH_TOKEN=segredo-longo-aleatorio}
+      - N8N_NATIVE_PYTHON_RUNNER=true
+    volumes:
+      - ./n8n_data:/home/node/.n8n
+
+  # docker.n8n.io não espelha n8nio/runners; usar Docker Hub (mesma tag que n8n).
+  n8n-runners:
+    image: docker.io/n8nio/runners:2.13.2
+    container_name: n8n-runners
+    restart: unless-stopped
+    environment:
+      - N8N_RUNNERS_AUTH_TOKEN=${N8N_RUNNERS_AUTH_TOKEN:?Crie um ficheiro .env com N8N_RUNNERS_AUTH_TOKEN=segredo-longo-aleatorio}
+      - N8N_RUNNERS_TASK_BROKER_URI=http://n8n:5679
+      # Biblioteca padrão Python permitida no Code node (ajuste se quiser mais restrito)
+      - N8N_RUNNERS_STDLIB_ALLOW=*
+    depends_on:
+      - n8n
