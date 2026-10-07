@@ -1,0 +1,20 @@
+# Painel Streamlit na mesma máquina que o n8n / Postgres.
+# Na pasta leads-dashboard: docker compose up -d
+#
+# Crie .env a partir de .env.example. Se o Postgres estiver no host (não no Docker),
+# use POSTGRES_HOST=host.docker.internal (Docker Desktop) ou o IP da bridge (Linux).
+
+services:
+  leads-dashboard:
+    build: .
+    container_name: leads-dashboard
+    restart: unless-stopped
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./app.py:/app/app.py
+    env_file:
+      - .env
+    # Linux: permite POSTGRES_HOST=host.docker.internal no .env para falar com Postgres no host
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
